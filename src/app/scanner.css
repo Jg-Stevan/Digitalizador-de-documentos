@@ -1,0 +1,1819 @@
+/* scanner.css — [FASE 8.1, 2026-11] Rediseño visual sobre el diseño AI Studio
+   del humano (e-14-document-scanner.ai.studio — ver tool-results/stitch/).
+   ARQUITECTURA INVARIABLE: los nombres de clase/id que el código vanilla
+   (PageGallery/AdjustEditor/ModeCompare/cerLab) crea o consulta siguen
+   EXACTAMENTE igual — solo cambia el look. El pipeline (captura, detección,
+   warp, enhance) no se toca para nada.
+
+   Sistema de diseño (tokens medidos en el diseño publicado con agent-browser
+   + análisis VLM — look simple, no técnico, para público general):
+   - Superficies slate (Tailwind): 950 #020617 · 900 #0f172a · 800 #1e293b · 700 #334155
+   - Acento sky: #0ea5e9 (acciones) / #38bdf8 (texto/iconos) — como el diseño
+   - Rosa #f43f5e SOLO para lo destructivo (Eliminar / Nuevo documento armado)
+   - Ámbar #fbbf24 solo para avisos (páginas sin exportar, linterna encendida)
+   - Tipografía: Geist (ya cargada por next/font en layout.tsx)
+   - Radios 4/8/12/16 + pill; gutter 16px; touch targets ≥44px */
+
+/* ---------------------------------------------------------------------------
+   Tokens (scope .mscan — el app-frame del escáner)
+   --------------------------------------------------------------------------- */
+
+.mscan {
+  --surface: #0f172a;
+  --surface-dim: #0f172a;
+  --surface-lowest: #020617;
+  --surface-low: #1e293b;
+  --surface-c: #1e293b;
+  --surface-high: #24324a;
+  --surface-highest: #334155;
+  --surface-bright: #3b4a63;
+  --on-surface: #f1f5f9;
+  --on-surface-var: #94a3b8;
+  --outline: #64748b;
+  --outline-var: #334155;
+  --primary: #38bdf8;
+  --primary-c: #0ea5e9;
+  --primary-fixed: #7dd3fc;
+  --on-primary: #f0f9ff;
+  --on-primary-c: #f0f9ff;
+  --secondary: #f43f5e;
+  --on-secondary: #fff1f2;
+  --error: #fecdd3;
+  --error-text: #f87171;
+  --warn-text: #fbbf24;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --gutter: 16px;
+  --sh-sheet: 0 -8px 32px rgba(0, 0, 0, 0.55);
+  --sh-float: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+
+html body {
+  color: var(--surface-c, #1e293b);
+  background: #020617;
+  margin: 0;
+  padding: 0;
+  color-scheme: dark;
+}
+
+.mscan {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-geist-sans, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+}
+
+.mscan-main {
+  flex: 1;
+}
+
+.mscan [hidden] {
+  display: none !important;
+}
+
+.mscan h1 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.mscan h2 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+
+.mscan h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 4px 0;
+}
+
+.mscan .mscan-sub {
+  color: var(--on-surface-var);
+  font-size: 12px;
+  margin: 4px 0 0 0;
+}
+
+.mscan p {
+  color: var(--on-surface-var);
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+/* Controles base — pill/surface del diseño; sin márgenes por defecto (los
+   wrappers deciden el ritmo) para permitir layouts compactos tipo app. */
+
+.mscan button,
+.mscan select,
+.mscan input {
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: var(--surface-c);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-var);
+  border-radius: var(--r-lg);
+  box-sizing: border-box;
+}
+
+.mscan button {
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    transform 0.1s ease, color 0.15s ease;
+}
+
+.mscan button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.mscan button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mscan button:focus-visible,
+.mscan select:focus-visible,
+.mscan input:focus-visible,
+.mscan a:focus-visible,
+.mscan summary:focus-visible {
+  outline: 2px solid var(--primary-c);
+  outline-offset: 2px;
+}
+
+.mscan .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Top bar (sticky dentro del frame de 480px)
+   --------------------------------------------------------------------------- */
+
+.mscan .mscan-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 var(--gutter);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--surface-low);
+}
+
+.mscan .mscan-topbar .tb-btn {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  color: var(--on-surface-var);
+}
+
+.mscan .mscan-topbar .tb-btn:hover {
+  color: var(--on-surface);
+}
+
+.mscan .mscan-topbar h1 {
+  flex: 1;
+  text-align: center;
+}
+
+.mscan .mscan-topbar .tb-side {
+  min-width: 44px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mscan #installBtn {
+  border: none;
+  color: var(--on-primary-c);
+  background: var(--primary-c);
+  border-radius: 999px;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(14, 165, 233, 0.45);
+}
+
+.mscan #installBtn:hover {
+  background: #0284c7;
+}
+
+.mscan #iosHint {
+  flex-basis: 100%;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Vista Escanear (cámara)
+   --------------------------------------------------------------------------- */
+
+.mscan .cam-stage {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  overflow: hidden;
+}
+
+.mscan .cam-stage video {
+  background: #000;
+  width: 100%;
+  display: block;
+  min-height: 120px;
+}
+
+.mscan canvas.overlay {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mscan #dianaGuide {
+  position: absolute;
+  inset: 12%;
+  border: 2px dashed var(--primary-c);
+  pointer-events: none;
+}
+
+/* Banda superior sobre la cámara: estado + contador. Empujada a 44px: el
+   hint de encuadre R4 se dibuja EN el canvas overlay (fillText y≈24/480) y
+   es zona validada — los chips flotan por DEBAJO de esa línea. */
+
+.mscan .cam-topband {
+  position: absolute;
+  top: 44px;
+  left: var(--gutter);
+  right: var(--gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.mscan .cam-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-low) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--surface-high);
+}
+
+.mscan .cam-chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--primary-c);
+  box-shadow: 0 0 8px var(--primary-c);
+}
+
+.mscan .cam-chip.neutral {
+  color: var(--on-surface-var);
+}
+
+.mscan #mCap {
+  color: var(--primary);
+}
+
+/* Overlay de arranque (antes de Iniciar cámara) */
+
+.mscan .cam-start {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(2, 6, 23, 0.55),
+    rgba(2, 6, 23, 0.92)
+  );
+  padding: 24px;
+  text-align: center;
+  transition: opacity 0.25s ease;
+}
+
+.mscan .cam-start:has(#startBtn:disabled) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mscan .cam-start h2 {
+  margin: 0;
+}
+
+.mscan #startBtn {
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  border: none;
+  border-radius: var(--r-lg);
+  min-height: 48px;
+  padding: 12px 24px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.35);
+}
+
+.mscan #startBtn:disabled {
+  display: none;
+}
+
+/* Zona de controles bajo la cámara: [filtro | shutter+anillo | linterna] */
+
+.mscan .cam-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px var(--gutter) 6px var(--gutter);
+}
+
+.mscan .ctl-pill {
+  min-height: 48px;
+  min-width: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--surface-high);
+  border: 1px solid var(--surface-highest);
+  color: var(--on-surface);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 42%;
+}
+
+.mscan .ctl-pill:hover {
+  background: var(--surface-c);
+}
+
+.mscan .ctl-pill svg {
+  color: var(--primary);
+  flex: none;
+}
+
+.mscan .ctl-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mscan .ctl-pill.torch-on {
+  background: var(--surface-bright);
+  color: var(--warn-text);
+}
+
+.mscan .ctl-pill.torch-on svg {
+  color: var(--warn-text);
+}
+
+/* Shutter central con anillo de calidad: el canvas #ring (84×84, dibujado
+   por ScoreRingView) se posiciona ABSOLUTO alrededor del botón de 72px —
+   cero cambios de lógica, pura composición visual. */
+
+.mscan .shutter-wrap {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex: none;
+}
+
+.mscan #ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.mscan #shutterBtn {
+  position: absolute;
+  inset: 6px;
+  z-index: 2;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--surface-lowest);
+  border: 3px solid var(--on-surface);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+}
+
+.mscan #shutterBtn::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 999px;
+  background: var(--on-surface);
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+
+.mscan #shutterBtn:active:not(:disabled)::after {
+  transform: scale(0.88);
+}
+
+.mscan #shutterBtn:disabled {
+  border-color: var(--outline);
+}
+
+.mscan #shutterBtn:disabled::after {
+  background: var(--outline);
+}
+
+.mscan #torchBtn {
+  border-radius: 999px;
+  background: var(--surface-high);
+  border: 1px solid var(--surface-highest);
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--on-surface);
+  font-size: 12px;
+}
+
+.mscan #torchBtn:hover {
+  background: var(--surface-c);
+}
+
+/* [FASE 9] Subir fotos de la galería (recorte automático): icono junto al
+   shutter — mismo lenguaje visual que la linterna (pill 48px, ícono sky). */
+
+.mscan #importBtn {
+  border-radius: 999px;
+  background: var(--surface-high);
+  border: 1px solid var(--surface-highest);
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-surface);
+}
+
+.mscan #importBtn svg {
+  color: var(--primary);
+}
+
+.mscan #importBtn:hover {
+  background: var(--surface-c);
+}
+
+.mscan #importBtn:disabled {
+  opacity: 0.55;
+}
+
+/* [FASE 9] Alternativa sin cámara en el arranque: CTA fantasma (outline
+   sky) — el primario sigue siendo "Iniciar cámara". */
+
+.mscan .start-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.mscan .start-secondary:hover {
+  background: rgba(14, 165, 233, 0.22);
+}
+
+.mscan .start-secondary:disabled {
+  opacity: 0.55;
+}
+
+/* ---------------------------------------------------------------------------
+   Hoja de Revisión de Captura (pantalla 3 del diseño — EN FLUJO)
+   Visible EXACTAMENTE cuando hay captura disponible: addBtn habilitado ⇔
+   onCaptured/onEdited corrió (mismo contrato del UI viejo — el flujo AUTO
+   conserva su botón Agregar). Puro CSS :has(), cero JS: en-flow, nunca tapa
+   el shutter (la re-toma F6 sigue alcanzable mientras la hoja está abierta).
+   --------------------------------------------------------------------------- */
+
+.mscan #reviewSheet {
+  display: none;
+  margin: 10px var(--gutter) 0 var(--gutter);
+  background: var(--surface-low);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-float);
+  padding: 8px 14px 14px 14px;
+}
+
+.mscan #reviewSheet:has(#addBtn:enabled) {
+  display: block;
+}
+
+.mscan #reviewSheet .sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-highest);
+  margin: 4px auto 8px auto;
+}
+
+.mscan #reviewSheet .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mscan #reviewSheet .sheet-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.mscan #thumbLabel {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--on-primary-c);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.mscan #reviewSheet .sheet-preview {
+  position: relative;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--surface-highest);
+  background: var(--surface-lowest);
+  padding: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.mscan #thumb {
+  display: block;
+  max-width: 100%;
+  max-height: 28vh;
+  border-radius: var(--r-sm);
+}
+
+.mscan #reviewSheet .sheet-preview .corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--primary-c);
+  border-style: solid;
+  border-width: 0;
+  pointer-events: none;
+}
+
+.mscan #reviewSheet .sheet-preview .corner.tl {
+  top: 5px;
+  left: 5px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  border-top-left-radius: 4px;
+}
+
+.mscan #reviewSheet .sheet-preview .corner.tr {
+  top: 5px;
+  right: 5px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+  border-top-right-radius: 4px;
+}
+
+.mscan #reviewSheet .sheet-preview .corner.bl {
+  bottom: 5px;
+  left: 5px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+  border-bottom-left-radius: 4px;
+}
+
+.mscan #reviewSheet .sheet-preview .corner.br {
+  bottom: 5px;
+  right: 5px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+  border-bottom-right-radius: 4px;
+}
+
+.mscan #reviewSheet .sheet-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.mscan #reviewSheet .sheet-meta .m-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-md);
+  background: var(--surface-c);
+  border: 1px solid var(--surface-high);
+  color: var(--on-surface-var);
+  font-size: 11px;
+}
+
+.mscan #reviewSheet .sheet-meta .m-chip b {
+  color: var(--on-surface);
+}
+
+.mscan #addBtn {
+  width: 100%;
+  min-height: 52px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.28);
+}
+
+.mscan #addBtn:hover:not(:disabled) {
+  background: var(--primary);
+}
+
+.mscan #reviewSheet .sheet-secondary {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.mscan #reviewSheet .sheet-secondary button {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--r-lg);
+  background: var(--surface-c);
+  border: 1px solid var(--surface-highest);
+  color: var(--on-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.mscan #reviewSheet .sheet-secondary button:hover {
+  background: var(--surface-bright);
+}
+
+.mscan #reviewSheet .sheet-secondary svg {
+  color: var(--primary);
+}
+
+/* viewPages: ancla de scroll con margen para el topbar sticky */
+.mscan #viewPages {
+  scroll-margin-top: 64px;
+}
+
+/* ---------------------------------------------------------------------------
+   Vista Páginas del Documento (pantalla 5 del diseño)
+   --------------------------------------------------------------------------- */
+
+.mscan .pages-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px var(--gutter) 8px var(--gutter);
+}
+
+.mscan .pages-head h2 {
+  margin: 0;
+  flex: none;
+}
+
+.mscan .pages-head .pages-count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface-c);
+  color: var(--on-surface-var);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--surface-high);
+}
+
+.mscan .pages-head #refreshBtn {
+  width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface-c);
+  border: 1px solid var(--surface-high);
+  color: var(--on-surface-var);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mscan #newDocBtn {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: var(--r-lg);
+  background: var(--surface-c);
+  border: 1px solid var(--surface-highest);
+  color: var(--on-surface-var);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* [FASE 8.1] Reposo = acción neutra (como "Seguir escaneando" del diseño);
+   el rosa SOLO aparece armado (.danger) — cero ambigüedad para el público. */
+
+.mscan #newDocBtn:hover:not(:disabled) {
+  background: var(--surface-bright);
+  color: var(--on-surface);
+}
+
+/* [FASE 7a] confirmación en dos pasos — armado en rosa sólido (como el
+   "Eliminar" del diseño AI Studio: lo destructivo SIEMPRE rosa) */
+
+.mscan button.danger {
+  background: var(--secondary);
+  border-color: var(--secondary);
+  color: var(--on-secondary);
+}
+
+.mscan button.danger:focus-visible {
+  outline-color: var(--secondary);
+}
+
+/* Galería (PageGallery renderiza pg-bar/pg-grid dinámicamente — mismos
+   nombres de clase, nuevo look: chips + grid de 2 columnas) */
+
+.mscan #gallery {
+  background: transparent;
+  border: none;
+  padding: 0 var(--gutter);
+  margin: 0;
+}
+
+.mscan .pg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.mscan .pg-count {
+  font-size: 12px;
+  color: var(--on-surface-var);
+}
+
+/* El selector de modo se ve como el chip activo del diseño (pill sky) */
+
+.mscan .pg-mode {
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--on-primary-c) 50%),
+    linear-gradient(135deg, var(--on-primary-c) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 55%, calc(100% - 11px) 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+/* [FASE 8.1] Descripción del filtro elegido, al pie del chip — el patrón
+   "nombre + subtítulo" de las tarjetas de filtro del diseño AI Studio:
+   el nombre técnico vive COMO subtítulo pequeño, no como etiqueta. */
+
+.mscan .pg-mode-sub {
+  flex-basis: 100%;
+  margin: -2px 0 0 4px;
+  font-size: 11px;
+  color: var(--on-surface-var);
+}
+
+/* [FASE 8.1] Estado vacío de la galería: primera visita del público —
+   guiar en vez de mostrar un contador en 0. */
+
+.mscan .pg-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px 0;
+  padding: 28px 16px;
+  border-radius: var(--r-xl);
+  border: 1.5px dashed var(--surface-highest);
+  color: var(--on-surface-var);
+  font-size: 13px;
+  text-align: center;
+}
+
+.mscan .pg-empty .pg-empty-title {
+  color: var(--on-surface);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* [FASE 9] CTA del estado vacío: subir fotos (mismo recorte automático). */
+
+.mscan .pg-empty .pg-empty-cta {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.mscan .pg-empty .pg-empty-cta:hover {
+  background: rgba(14, 165, 233, 0.22);
+}
+
+.mscan .pg-empty svg {
+  color: var(--primary);
+  opacity: 0.85;
+}
+
+.mscan .pg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.mscan .pg-thumb {
+  position: relative;
+  padding: 0;
+  background: var(--surface-low);
+  border: 1px solid var(--surface-highest);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.mscan .pg-thumb canvas.pg-thumb-img,
+.mscan .pg-thumb canvas {
+  display: block;
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  background: var(--surface-lowest);
+}
+
+.mscan .pg-del {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-lowest) 85%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--surface-high);
+  color: var(--on-surface-var);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mscan .pg-del:hover {
+  color: var(--error-text);
+  border-color: var(--error-text);
+}
+
+.mscan .pg-cmp {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-lowest) 85%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--surface-high);
+  color: var(--on-surface-var);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.mscan .pg-cmp:hover {
+  color: var(--primary);
+  border-color: var(--primary-c);
+}
+
+.mscan .pg-mode-tag {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--on-surface-var);
+  padding: 6px 6px 8px 6px;
+  background: var(--surface-low);
+  border-top: 1px solid var(--surface-c);
+}
+
+.mscan .pg-hint {
+  color: var(--warn-text);
+  font-size: 12px;
+  margin: 12px 0 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--warn-text) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn-text) 35%, transparent);
+}
+
+.mscan .pg-dragging {
+  opacity: 0.75;
+  border-color: var(--primary-c);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-c) 45%, transparent);
+}
+
+/* Barra de exportación (sticky sobre la nav) */
+
+.mscan .export-bar {
+  position: sticky;
+  bottom: 64px;
+  z-index: 30;
+  margin: 12px var(--gutter) 8px var(--gutter);
+  padding: 12px;
+  border-radius: var(--r-xl);
+  background: color-mix(in srgb, var(--surface-low) 94%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--surface-highest);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  box-shadow: var(--sh-float);
+}
+
+.mscan #pdfSizeBtn {
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-highest);
+  border: none;
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mscan #pdfSizeBtn:hover {
+  background: var(--surface-bright);
+}
+
+.mscan #pdfBtn {
+  flex: 1;
+  min-height: 52px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.3);
+}
+
+.mscan #pdfBtn:hover:not(:disabled) {
+  background: var(--primary);
+}
+
+/* ---------------------------------------------------------------------------
+   Bottom nav (sticky — tabs Escanear / Páginas, anclas de scroll)
+   --------------------------------------------------------------------------- */
+
+.mscan .mscan-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  height: 60px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: color-mix(in srgb, var(--surface-lowest) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--surface-low);
+}
+
+.mscan .mscan-nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  padding: 6px 0 4px 0;
+  color: var(--on-surface-var);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mscan .mscan-nav button.active {
+  color: var(--primary);
+}
+
+.mscan .mscan-nav button.active svg {
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.5));
+}
+
+.mscan .mscan-footer {
+  margin-top: 0;
+  padding: 10px var(--gutter) 14px var(--gutter);
+  color: var(--on-surface-var);
+  font-size: 11px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-lowest);
+}
+
+.mscan .mscan-footer code {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 10px;
+  color: var(--outline);
+}
+
+/* Enlace de exportación del código fuente (utilidad del entorno — bórralo
+   junto con el <a> del footer si no lo necesitas). */
+.mscan .mscan-footer a.src-dl {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  text-underline-offset: 3px;
+  padding: 10px 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Toast + Error (flotantes: cero desplazamiento de layout)
+   --------------------------------------------------------------------------- */
+
+.mscan #toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  max-width: min(92%, 440px);
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--surface-bright);
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: var(--sh-float);
+  border: 1px solid var(--outline-var);
+}
+
+.mscan #toast:empty {
+  display: none;
+}
+
+/* [FASE 8.1] Con la hoja de export abierta el toast NO puede tapar "Nuevo
+   documento" (z-80 flotaría justo encima): se muda al borde superior. El
+   selector ~ aplica porque #toast es hermano posterior de #exportSheet. */
+
+.mscan #exportSheet:not([hidden]) ~ #toast {
+  bottom: auto;
+  top: calc(64px + env(safe-area-inset-top, 0px));
+}
+
+.mscan #err {
+  margin: 10px var(--gutter) 0 var(--gutter);
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, #881337 24%, transparent);
+  border: 1px solid #9f1239;
+  color: #fda4af;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mscan #err:empty {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Editor de esquinas (pantalla 1 del diseño — overlay full-screen)
+   --------------------------------------------------------------------------- */
+
+.mscan #editorRoot {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 55;
+  padding: 14px;
+}
+
+.mscan #editorRoot .ed-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mscan #editorRoot .ed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-c) 90%, transparent);
+  border: 1px solid var(--surface-highest);
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mscan #editorRoot .ed-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--primary-c);
+  animation: ed-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ed-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+.mscan #editorCanvas {
+  width: min(96vw, 640px);
+  height: min(58vh, 520px);
+  background: var(--surface-lowest);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--surface-high);
+  touch-action: none;
+}
+
+.mscan #editorErr {
+  margin-top: 10px;
+  max-width: 640px;
+  color: var(--error-text);
+  min-height: 20px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.mscan #editorBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.mscan #editorBtns button {
+  min-height: 48px;
+  padding: 10px 18px;
+}
+
+.mscan #editorConfirmBtn {
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  border: none;
+  border-radius: var(--r-lg);
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.28);
+}
+
+.mscan #editorConfirmBtn:hover:not(:disabled) {
+  background: var(--primary);
+}
+
+.mscan #editorRevertBtn {
+  background: var(--surface-c);
+  border: 1px solid var(--surface-highest);
+  color: var(--on-surface);
+  border-radius: var(--r-lg);
+}
+
+.mscan #editorCancelBtn {
+  background: transparent;
+  border: none;
+  color: var(--on-surface-var);
+  border-radius: var(--r-lg);
+}
+
+.mscan #editorCancelBtn:hover {
+  color: var(--error-text);
+}
+
+.mscan #editorHelp {
+  max-width: 640px;
+  color: var(--on-surface-var);
+  font-size: 13px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* ---------------------------------------------------------------------------
+   Hoja de exportación exitosa (pantalla 4 del diseño)
+   --------------------------------------------------------------------------- */
+
+.mscan #exportSheet {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: min(100%, 480px);
+  z-index: 90;
+  background: var(--surface-low);
+  border: 1px solid var(--surface-high);
+  border-bottom: none;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--sh-sheet);
+  padding: 16px var(--gutter) calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.mscan #exportSheet .exp-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  color: var(--on-surface-var);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mscan #exportSheet .exp-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-c) 16%, transparent);
+  border: 1px solid var(--primary-c);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mscan #exportSheet .exp-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 10px 0 2px 0;
+}
+
+.mscan #exportSheet .exp-sub {
+  text-align: center;
+  color: var(--on-surface-var);
+  font-size: 12px;
+  margin: 0 0 12px 0;
+}
+
+.mscan #exportSheet .exp-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface-c);
+  border: 1px solid var(--surface-highest);
+  margin-bottom: 12px;
+}
+
+.mscan #exportSheet .exp-file .f-ic {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--surface-lowest);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mscan #exportSheet .exp-file .f-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.mscan #exportSheet .exp-file .f-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mscan #exportSheet .exp-file .f-meta {
+  font-size: 11px;
+  color: var(--on-surface-var);
+}
+
+.mscan #exportSheet .exp-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mscan #exportSheet .exp-actions button {
+  flex: 1;
+  min-height: 50px;
+  border-radius: var(--r-lg);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mscan #expShare {
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  border: none;
+}
+
+.mscan #expShare:hover:not(:disabled) {
+  background: var(--primary);
+}
+
+.mscan #expDownload {
+  background: var(--surface-high);
+  border: 1px solid var(--surface-highest);
+  color: var(--on-surface);
+}
+
+.mscan #expDownload:hover {
+  background: var(--surface-bright);
+}
+
+.mscan #exportSheet .exp-new {
+  width: 100%;
+  margin-top: 8px;
+  min-height: 44px;
+  border-radius: var(--r-lg);
+  background: transparent;
+  border: 1px solid var(--surface-highest);
+  color: var(--on-surface-var);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mscan #exportSheet .exp-new:hover {
+  background: var(--surface-c);
+  color: var(--on-surface);
+}
+
+/* ---------------------------------------------------------------------------
+   Herramientas y diagnóstico (métricas, perfil, CER, diana, ajustes)
+   Colapsable: el look de app no se ensucia con telemetría; los IDs viven.
+   --------------------------------------------------------------------------- */
+
+.mscan .tools {
+  margin: 12px var(--gutter) 16px var(--gutter);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--surface-low);
+  background: var(--surface-lowest);
+}
+
+.mscan .tools summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  cursor: pointer;
+  color: var(--on-surface-var);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.mscan .tools summary::-webkit-details-marker {
+  display: none;
+}
+
+.mscan .tools summary::after {
+  content: '⌄';
+  margin-left: auto;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.mscan .tools[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.mscan .tools .tools-body {
+  padding: 0 12px 12px 12px;
+}
+
+.mscan .metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.mscan .metrics div {
+  background: var(--surface-low);
+  border: 1px solid var(--surface-c);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--on-surface-var);
+}
+
+.mscan .metrics b {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.mscan pre#out {
+  background: var(--surface-lowest);
+  border: 1px solid var(--surface-low);
+  border-radius: var(--r-md);
+  max-height: 160px;
+  padding: 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 11px;
+  color: var(--on-surface-var);
+  font-family: var(--font-geist-mono, monospace);
+}
+
+.mscan section.card {
+  border: 1px solid var(--surface-low);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  margin: 10px 0;
+  background: var(--surface-low);
+}
+
+.mscan .card p {
+  margin: 6px 0 0 0;
+}
+
+.mscan label.sw {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mscan table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.mscan table th,
+.mscan table td {
+  border: 1px solid var(--surface-c);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mscan table th {
+  background: var(--surface-low);
+}
+
+/* ---------------------------------------------------------------------------
+   Comparador de modos (ModeCompare — overlay #cmpRoot + viewer v-*)
+   Mismas clases, paleta del nuevo sistema.
+   --------------------------------------------------------------------------- */
+
+.mscan #cmpRoot {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  z-index: 60;
+  overflow: auto;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.mscan #cmpRoot.on {
+  display: block;
+}
+
+.mscan .cmp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.mscan .cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mscan .cmp-tile {
+  background: var(--surface-low);
+  border: 1px solid var(--surface-highest);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mscan .cmp-tile.current {
+  border-color: var(--primary-c);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-c) 40%, transparent);
+}
+
+.mscan .cmp-tile:focus-visible,
+.mscan .v-btn:focus-visible,
+.mscan .v-chip:focus-visible {
+  outline: 2px solid var(--primary-c);
+  outline-offset: 2px;
+}
+
+.mscan .cmp-sub {
+  font-size: 12px;
+  color: var(--on-surface-var);
+}
+
+.mscan .cmp-badge {
+  display: inline-block;
+  background: var(--primary-c);
+  color: var(--on-primary-c);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--r-sm);
+  padding: 1px 6px;
+  margin-left: 4px;
+}
+
+.mscan .cmp-use {
+  margin-top: 6px;
+  min-height: 44px;
+}
+
+.mscan .cmp-viewer {
+  position: fixed;
+  inset: 0;
+  background: #0f172a;
+  z-index: 61;
+  overflow: auto;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.mscan .v-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.mscan .v-title {
+  flex: 1;
+  text-align: center;
+}
+
+.mscan .v-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.mscan .v-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  max-width: 900px;
+  margin: 8px auto;
+}
+
+.mscan .v-chip {
+  min-height: 44px;
+  border: 1px solid var(--surface-highest);
+  background: var(--surface-c);
+  color: var(--on-surface);
+  border-radius: 999px;
+}
+
+.mscan .v-chip[aria-pressed='true'] {
+  border-color: var(--primary-c);
+  color: var(--primary);
+}
+
+.mscan .v-use-global {
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.mscan .v-stage {
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto;
+  background: #000;
+  overflow: hidden;
+  touch-action: none;
+  min-height: 200px;
+}
+
+.mscan .v-main {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  transform-origin: 0 0;
+  touch-action: none;
+}
+
+.mscan .v-loading {
+  color: var(--secondary);
+  padding: 8px;
+}
+
+.mscan .v-zoom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 900px;
+  margin: 8px auto;
+}
+
+.mscan .v-zoom-label {
+  min-width: 52px;
+  text-align: center;
+}
+
+.mscan .v-strips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 900px;
+  margin: 8px auto;
+}
+
+.mscan .v-strip-fig {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.mscan .v-strip {
+  border: 1px solid var(--surface-highest);
+  display: block;
+}
+
+.mscan .v-strip-fig figcaption {
+  font-size: 12px;
+  color: var(--on-surface-var);
+}
+
+.mscan .cmp-tile canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #000;
+}
+
+.mscan .cmp-label {
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 0 8px;
+}
+
+.mscan .cmp-stats {
+  font-size: 11px;
+  color: var(--on-surface-var);
+  padding: 0 8px 8px 8px;
+}
+
+.mscan .cmp-note {
+  color: var(--on-surface-var);
+  font-size: 11px;
+  margin-top: 8px;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
