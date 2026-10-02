@@ -1,0 +1,71 @@
+# .github/workflows/deploy.yml — publica la app en GitHub Pages.
+#
+# [GH-PAGES] Flujo: push a main → instala deps con bun → `next build`
+# (export estático) → sube out/ a Pages. La app es 100% cliente, así que no
+# necesita servidor ni base de datos.
+#
+# Base path: GitHub Pages sirve los "project sites" en /<nombre-del-repo>/,
+# así que el build define NEXT_PUBLIC_BASE_PATH=/<repo> (ver next.config.ts y
+# src/lib/base.ts). Los repos usuario.github.io (y dominios propios) van en
+# la raíz → basePath vacío, rutas normales.
+#
+# Única configuración manual (una sola vez, en GitHub):
+#   Settings → Pages → Build and deployment → Source: "GitHub Actions"
+
+name: Deploy a GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un deploy a la vez; el nuevo push cancela el anterior en curso.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Instalar dependencias
+        run: bun install --frozen-lockfile
+
+      - name: Build (basePath = /nombre-del-repo)
+        run: |
+          REPO="${{ github.event.repository.name }}"
+          if [[ "$REPO" == *.github.io ]]; then
+            echo "Repo de usuario (se sirve en la raíz): sin basePath"
+            bun run build
+          else
+            echo "Project site: basePath /$REPO"
+            NEXT_PUBLIC_BASE_PATH="/$REPO" bun run build
+          fi
+
+      - name: Subir artefacto de Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # next.config.ts usa output: "export" → el sitio estático sale en out/
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
